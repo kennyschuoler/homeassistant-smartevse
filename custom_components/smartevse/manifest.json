@@ -1,0 +1,13 @@
+{
+  "domain": "smartevse",
+  "name": "Smart EVSE",
+  "documentation": "https://github.com/kennyschuoler/homeassistant-smartevse/blob/main/README.md",
+  "issue_tracker": "https://github.com/kennyschuoler/homeassistant-smartevse/issues",
+  "dependencies": [],
+  "config_flow": true,
+  "codeowners": [
+    "@kennyschuoler"
+  ],
+  "requirements": ["homeassistant>=2021.12.7"],
+  "version": "v0.0.1"
+}
