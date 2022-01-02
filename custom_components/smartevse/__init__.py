@@ -38,7 +38,7 @@ CONFIG_SCHEMA = vol.Schema({
                 vol.Required(CONF_HOST): cv.string,
                 vol.Required(CONF_PORT, default=DEFAULT_PORT): cv.port,
                 vol.Required(CONF_ADDRESS, default=DEFAULT_ADDRESS): vol.All([vol.Range(min=0, max=255)])
-            }
+            })
         ])
     })
 }, extra=vol.ALLOW_EXTRA)
