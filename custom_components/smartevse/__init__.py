@@ -46,6 +46,7 @@ CONFIG_SCHEMA = vol.Schema({
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the component from configuration.yaml."""
+    _LOGGER.info("Initiating async setup procedure")
     hass.data.setdefault(DOMAIN, {})
 
     if hass.config_entries.async_entries(DOMAIN):
