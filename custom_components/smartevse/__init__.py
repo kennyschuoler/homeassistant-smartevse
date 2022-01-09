@@ -19,7 +19,7 @@ from pymodbus.constants import Defaults
 
 _LOGGER = logging.getLogger(__name__)
 
-from .const import DOMAIN, DATA_COORDINATOR, CONF_SCAN_INTERVAL, CONF_CHARGING_STATIONS, CONF_UNIQUE_ID, CONF_HOST, CONF_PORT, CONF_ADDRESS
+from .const import DOMAIN, DOMAIN_FRIENDLY, DEVICE_MANUFACTURER, DATA_COORDINATOR, CONF_SCAN_INTERVAL, CONF_CHARGING_STATIONS, CONF_UNIQUE_ID, CONF_FRIENDLY_NAME, CONF_HOST, CONF_PORT, CONF_ADDRESS
 
 PLATFORMS = ["sensor"]
 
@@ -29,6 +29,7 @@ DEFAULT_ADDRESS = 1
 
 CHARGING_STATIONS = vol.Schema({
     vol.Required(CONF_UNIQUE_ID): cv.string,
+    vol.Optional(CONF_FRIENDLY_NAME): cv.string,
     vol.Required(CONF_HOST): cv.string,
     vol.Required(CONF_PORT, default=DEFAULT_PORT): cv.port,
     vol.Required(CONF_ADDRESS): vol.All(vol.Range(min=0, max=255))
@@ -44,23 +45,20 @@ CONFIG_SCHEMA = vol.Schema({
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the component from configuration.yaml."""
     hass.data.setdefault(DOMAIN, {DATA_COORDINATOR: {}})
-    # hass.data[DOMAIN] = {DATA_COORDINATOR: {}}
 
     if hass.config_entries.async_entries(DOMAIN):
+        _LOGGER.debug(f"{DOMAIN_FRIENDLY} : A configuration is already applied. Skipping setup...")
         return True
 
     if DOMAIN not in config:
-        _LOGGER.info("Kenny : No Smart EVSE configuration found. Skipping...")
+        _LOGGER.debug(f"{DOMAIN_FRIENDLY} : No configuration found. Skipping setup...")
         return True
 
-    _LOGGER.info("Kenny : Found Smart EVSE configuration!")
-    smartevse = config[DOMAIN]
+    _LOGGER.info(f"{DOMAIN_FRIENDLY} : Found configuration! Starting installation...")
 
-    for charging_station in smartevse[CONF_CHARGING_STATIONS]:
-        _LOGGER.info("Kenny : Configuring charging station %s", charging_station)
-
-        _LOGGER.info("Kenny : async_setup : Done creating async_register_new_charging_station")
-
+    for charging_station in config[DOMAIN][CONF_CHARGING_STATIONS]:
+        _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Setting up charging station with following config : {charging_station}")
+        charging_station[CONF_SCAN_INTERVAL] = config[DOMAIN][CONF_SCAN_INTERVAL]
         hass.async_create_task(
             hass.config_entries.flow.async_init(
                 DOMAIN,
@@ -69,30 +67,34 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             )
         )
 
-        _LOGGER.info("Kenny : async_setup : Done creating async_init")
-
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    _LOGGER.info("Kenny : Async setup entry : %s - %s", entry.entry_id, entry)
-    _LOGGER.info("Kenny : Async setup entry data : %s", entry.data)
+    _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Setting up entry with id '{entry.entry_id}' and data '{entry.data}'")
 
     charging_station = entry.data
 
     hass.async_create_task(
-        async_register_new_charging_station(hass, charging_station, entry)
+        async_register_new_charging_station(hass, entry)
     )
 
     async def async_update():
-        _LOGGER.info("Kenny : async_setup_entry : async_update : %s", charging_station)
-        updated_charging_station = ChargingStation(charging_station[CONF_UNIQUE_ID], charging_station[CONF_HOST], charging_station[CONF_PORT], charging_station[CONF_ADDRESS])
-        return updated_charging_station.async_update_data()
+        charging_station_to_update = ChargingStation(
+            charging_station[CONF_UNIQUE_ID],
+            charging_station[CONF_FRIENDLY_NAME],
+            charging_station[CONF_HOST],
+            charging_station[CONF_PORT],
+            charging_station[CONF_ADDRESS],
+            charging_station[CONF_SCAN_INTERVAL]
+        )
+        _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Updating sensor values for charging station : {charging_station_to_update}")
+        return await charging_station_to_update.async_update_data()
 
-    INTERVAL = timedelta(seconds=30) # TODO change to variable
+    INTERVAL = timedelta(seconds=int(charging_station[CONF_SCAN_INTERVAL]))
     coordinator = hass.data[DOMAIN][DATA_COORDINATOR][entry.entry_id] = DataUpdateCoordinator(
         hass,
         _LOGGER,
-        name="smartevse-{}".format(charging_station[CONF_UNIQUE_ID]),
+        name=f"{DOMAIN}-{charging_station[CONF_UNIQUE_ID]}",
         update_interval=INTERVAL,
         update_method=async_update,
     )
@@ -101,38 +103,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 #     await coordinator.async_config_entry_first_refresh()
 
     for platform in PLATFORMS:
-        _LOGGER.info("Kenny : Creating task for platform : %s", platform)
+        _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Delegating configuration to platform : {platform}")
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(entry, platform)
         )
 
     return True
 
-async def async_register_new_charging_station(hass: HomeAssistant, charging_station: dict, entry: ConfigEntry):
+async def async_register_new_charging_station(hass: HomeAssistant, entry: ConfigEntry):
     """Register a new charging station."""
-    _LOGGER.info("Kenny : Initializing async_register_new_charging_station %s", charging_station)
+    _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Registering device : {entry.data} with entry id : {entry.entry_id}")
     device_registry = await dr.async_get_registry(hass)
     test = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, charging_station.get(CONF_UNIQUE_ID))},
-        manufacturer="Stegen",
-        name="Smart EVSE - {}".format(charging_station.get(CONF_UNIQUE_ID)),
-        model="v2.2",
-        sw_version="v2.31",
+        identifiers={(DOMAIN, entry.data.get(CONF_UNIQUE_ID))},
+        manufacturer=f"{DEVICE_MANUFACTURER}",
+        name=f"{DOMAIN_FRIENDLY} - {entry.data.get(CONF_FRIENDLY_NAME)}",
     )
 
 class ChargingStation:
-    def __init__(self, unique_id, host, port, address):
+    def __init__(self, unique_id, friendly_name, host, port, address, scan_interval=30):
         """Initializing charging station."""
-        _LOGGER.info("Kenny : Initializing charging station object with id %s", unique_id)
         self._unique_id = unique_id
+        self._friendly_name = friendly_name
         self._host = host
         self._port = port
         self._address = address
+        self._scan_interval = scan_interval
+        self._evse_status = None
+        self._node_specific_config = None
+        self._system_config = None
 
     @property
     def unique_id(self) -> str:
         return f"{self._unique_id}"
+
+    @property
+    def friendly_name(self) -> str:
+        return f"{self._friendly_name}"
 
     @property
     def host(self) -> str:
@@ -147,6 +155,10 @@ class ChargingStation:
         return f"{self._address}"
 
     @property
+    def scan_interval(self) -> timedelta:
+        return f"{self._scan_interval}"
+
+    @property
     def evse_status(self) -> str:
         return f"{self._evse_status}"
 
@@ -159,65 +171,75 @@ class ChargingStation:
         return f"{self._system_config}"
 
     def __repr__(self):
-        return "%s(unique_id: %s, host: %s, port: %s, address: %s, evse_status: %s, node_specific_config: %s, system_config: %s)" % (self.__class__.__name__, self._unique_id, self._host, self._port, self._address, self._evse_status, self._node_specific_config, self._system_config)
+        return "%s(unique_id: %s, friendly_name: %s, host: %s, port: %s, address: %s, scan_interval: %s, evse_status: %s, node_specific_config: %s, system_config: %s)" % (self.__class__.__name__, self._unique_id, self._friendly_name, self._host, self._port, self._address, self._scan_interval, self._evse_status, self._node_specific_config, self._system_config)
 
     async def test_connection(self) -> bool:
         """Test connectivity that the charging station is reachable."""
-        _LOGGER.info("Kenny : Testing modbus connection")
+        _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Testing modbus connection for host '{self._host}' and port '{self._port}'")
         client = ModbusClient(self._host, self._port, framer=ModbusRtuFramer)
         client.connect()
         client.close()
         return True
 
-    async def async_update_data(self) -> bool:
-        """Updating data."""
-        _LOGGER.info("Kenny : Fetching Smart EVSE charging station data")
+    async def async_update_data(self):
+        """Updating sensor states."""
+        _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Fetching latest sensor states for charging station")
 
         client = ModbusClient(self._host, self._port, framer=ModbusRtuFramer)
         client.connect()
 
+        result = None
         attempt = 0
         max_retries = 10
         while attempt < max_retries:
             attempt += 1
-            try:
-                self._evse_status = client.read_input_registers(0x0000, 12, unit=self._address)
-                _LOGGER.info("Kenny : Attempt %s : EVSE Status : %s", attempt, self._evse_status.registers)
-            except results.isError():
-                _LOGGER.error("Kenny : Attempt %s : EVSE Status")
+            _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'EVSE Status'")
+            result = client.read_input_registers(0x0000, 12, unit=self._address)
+            if result.isError():
+                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'EVSE Status'")
+                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Result {result}")
                 time.sleep(1)
                 continue
-            break
+            else:
+                self._evse_status = result.registers
+                break
 
+        result = None
         attempt = 0
         max_retries = 10
         while attempt < max_retries:
             attempt += 1
-            try:
-                self._node_specific_config = client.read_input_registers(0x0100, 10, unit=self._address)
-                _LOGGER.info("Kenny : Attempt %s : Node specific configuration : %s", attempt, self._node_specific_config.registers)
-            except results.isError():
-                _LOGGER.error("Kenny : Attempt %s : Node specific configuration")
+            _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'Node specific configuration'")
+            result = client.read_input_registers(0x0100, 10, unit=self._address)
+            if result.isError():
+                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'Node specific configuration'")
+                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Result {result}")
                 time.sleep(1)
                 continue
-            break
+            else:
+                self._node_specific_config = result.registers
+                break
 
+        result = None
         attempt = 0
         max_retries = 10
         while attempt < max_retries:
             attempt += 1
-            try:
-                self._system_config = client.read_input_registers(0x0200, 25, unit=self._address)
-                _LOGGER.info("Kenny : Attempt %s : System configuration : %s", attempt, self._system_config.registers)
-            except results.isError():
-                _LOGGER.error("Kenny : Attempt %s : System configuration")
+            _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'System configuration'")
+            result = client.read_input_registers(0x0200, 25, unit=self._address)
+            if result.isError():
+                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'System configuration'")
+                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Result {result}")
                 time.sleep(1)
                 continue
-            break
+            else:
+                self._system_config = result.registers
+                break
 
         client.close()
 
-        _LOGGER.error("Kenny : Returning self : %s", self)
-        _LOGGER.error("Kenny : Returning self unique_id : %s", self._unique_id)
-
-        return self
+        return {
+            "_evse_status": self._evse_status,
+            "_node_specific_config": self._node_specific_config,
+            "_system_config": self._system_config
+        }
