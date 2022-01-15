@@ -191,7 +191,7 @@ class ChargingStation:
         result = None
         attempt = 0
         max_retries = 10
-        succeeded = false
+        succeeded = False
         while attempt < max_retries:
             attempt += 1
             _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'EVSE Status'")
@@ -199,7 +199,7 @@ class ChargingStation:
             if result.isError():
                 _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'EVSE Status'")
                 time.sleep(attempt)
-                succeeded = true
+                succeeded = True
                 continue
             else:
                 self._evse_status = result.registers
@@ -210,7 +210,7 @@ class ChargingStation:
         result = None
         attempt = 0
         max_retries = 10
-        succeeded = false
+        succeeded = False
         while attempt < max_retries:
             attempt += 1
             _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'Node specific configuration'")
@@ -218,7 +218,7 @@ class ChargingStation:
             if result.isError():
                 _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'Node specific configuration'")
                 time.sleep(attempt)
-                succeeded = true
+                succeeded = True
                 continue
             else:
                 self._node_specific_config = result.registers
@@ -229,7 +229,7 @@ class ChargingStation:
         result = None
         attempt = 0
         max_retries = 10
-        succeeded = false
+        succeeded = False
         while attempt < max_retries:
             attempt += 1
             _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'System configuration'")
@@ -237,7 +237,7 @@ class ChargingStation:
             if result.isError():
                 _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'System configuration'")
                 time.sleep(attempt)
-                succeeded = true
+                succeeded = True
                 continue
             else:
                 self._system_config = result.registers
