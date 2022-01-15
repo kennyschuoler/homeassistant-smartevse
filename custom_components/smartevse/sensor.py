@@ -40,7 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     sensor_list.append(SmartEvseSensor(coordinator, entry.data, "Cable lock", "_node_specific_config", 1, None, None, {}, { "0": "Disable", "1": "Solenoid", "2": "Motor" }))
     sensor_list.append(SmartEvseSensor(coordinator, entry.data, "MIN Charge Current the EV will accept", "_node_specific_config", 2, "A", "current", {}, {}))
     sensor_list.append(SmartEvseSensor(coordinator, entry.data, "MAX Charge Current for this EVSE", "_node_specific_config", 3, "A", "current", {}, {}))
-    sensor_list.append(SmartEvseSensor(coordinator, entry.data, "Load Balance", "_node_specific_config", 4, None, None, {}, { "0": "Disabled", "1": "Master", "2": "Node 2", "3": "Node 3", "4": "Node 4", "5": "Node 5", "6": "Node 6", "7": "Node 7", "8": "Node 8" }))
+    sensor_list.append(SmartEvseSensor(coordinator, entry.data, "Load Balance", "_node_specific_config", 4, None, None, {}, { "0": "Disabled", "1": "Master" }))
     sensor_list.append(SmartEvseSensor(coordinator, entry.data, "External Switch on pin SW", "_node_specific_config", 5, None, None, {}, { "0": "Disabled", "1": "Access Push-Button", "2": "Access Switch", "3": "Smart-Solar Push-Button", "4": "Smart-Solar Switch" }))
     sensor_list.append(SmartEvseSensor(coordinator, entry.data, "Residual Current Monitor on pin RCM", "_node_specific_config", 6, None, None, {}, { "0": "Disabled", "1": "Enabled" }))
     sensor_list.append(SmartEvseSensor(coordinator, entry.data, "Use RFID reader", "_node_specific_config", 7, None, None, {}, { "0": "Disabled", "1": "Enabled" }))
@@ -99,7 +99,7 @@ class SmartEvseSensor(CoordinatorEntity, SensorEntity):
         if self._sensor_value_category_key in self.coordinator.data:
             category = self.coordinator.data[self._sensor_value_category_key]
             if 0 <= self._sensor_value_item_key < len(category):
-                new_sensor_value = round(float(category[self._sensor_value_item_key] + self.offset()), self.precision())
+                new_sensor_value = round(category[self._sensor_value_item_key] + self.offset(), self.precision())
                 if str(new_sensor_value) in self._friendly_sensor_values:
                     new_sensor_value = self._friendly_sensor_values[str(new_sensor_value)]
                 _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Updating sensor value from {self._sensor_value} to {new_sensor_value}")
