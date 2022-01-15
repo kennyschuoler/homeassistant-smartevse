@@ -191,50 +191,59 @@ class ChargingStation:
         result = None
         attempt = 0
         max_retries = 10
+        succeeded = false
         while attempt < max_retries:
             attempt += 1
             _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'EVSE Status'")
             result = client.read_input_registers(0x0000, 12, unit=self._address)
             if result.isError():
-                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'EVSE Status'")
-                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Result {result}")
-                time.sleep(1)
+                _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'EVSE Status'")
+                time.sleep(attempt)
+                succeeded = true
                 continue
             else:
                 self._evse_status = result.registers
                 break
+        if not succeeded:
+            _LOGGER.error(f"{DOMAIN_FRIENDLY} : Failed to fetch 'EVSE Status' (tried {attempt} times)")
 
         result = None
         attempt = 0
         max_retries = 10
+        succeeded = false
         while attempt < max_retries:
             attempt += 1
             _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'Node specific configuration'")
             result = client.read_input_registers(0x0100, 10, unit=self._address)
             if result.isError():
-                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'Node specific configuration'")
-                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Result {result}")
-                time.sleep(1)
+                _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'Node specific configuration'")
+                time.sleep(attempt)
+                succeeded = true
                 continue
             else:
                 self._node_specific_config = result.registers
                 break
+        if not succeeded:
+            _LOGGER.error(f"{DOMAIN_FRIENDLY} : Failed to fetch 'Node specific configuration' (tried {attempt} times)")
 
         result = None
         attempt = 0
         max_retries = 10
+        succeeded = false
         while attempt < max_retries:
             attempt += 1
             _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} to fetch 'System configuration'")
             result = client.read_input_registers(0x0200, 25, unit=self._address)
             if result.isError():
-                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'System configuration'")
-                _LOGGER.error(f"{DOMAIN_FRIENDLY} : Result {result}")
-                time.sleep(1)
+                _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'System configuration'")
+                time.sleep(attempt)
+                succeeded = true
                 continue
             else:
                 self._system_config = result.registers
                 break
+        if not succeeded:
+            _LOGGER.error(f"{DOMAIN_FRIENDLY} : Failed to fetch 'System configuration' (tried {attempt} times)")
 
         client.close()
 
