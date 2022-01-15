@@ -199,10 +199,10 @@ class ChargingStation:
             if result.isError():
                 _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'EVSE Status'")
                 time.sleep(attempt)
-                succeeded = True
                 continue
             else:
                 self._evse_status = result.registers
+                succeeded = True
                 break
         if not succeeded:
             _LOGGER.error(f"{DOMAIN_FRIENDLY} : Failed to fetch 'EVSE Status' (tried {attempt} times)")
@@ -218,10 +218,10 @@ class ChargingStation:
             if result.isError():
                 _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'Node specific configuration'")
                 time.sleep(attempt)
-                succeeded = True
                 continue
             else:
                 self._node_specific_config = result.registers
+                succeeded = True
                 break
         if not succeeded:
             _LOGGER.error(f"{DOMAIN_FRIENDLY} : Failed to fetch 'Node specific configuration' (tried {attempt} times)")
@@ -237,10 +237,10 @@ class ChargingStation:
             if result.isError():
                 _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Attempt {attempt} failed to fetch 'System configuration'")
                 time.sleep(attempt)
-                succeeded = True
                 continue
             else:
                 self._system_config = result.registers
+                succeeded = True
                 break
         if not succeeded:
             _LOGGER.error(f"{DOMAIN_FRIENDLY} : Failed to fetch 'System configuration' (tried {attempt} times)")
