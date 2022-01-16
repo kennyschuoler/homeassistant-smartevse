@@ -176,7 +176,8 @@ class ChargingStation:
     async def test_connection(self) -> bool:
         """Test connectivity that the charging station is reachable."""
         _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Testing modbus connection for host '{self._host}' and port '{self._port}'")
-        client = ModbusClient(self._host, self._port, framer=ModbusRtuFramer)
+        client = ModbusClient(self._host, self._port)
+#         client = ModbusClient(self._host, self._port, framer=ModbusRtuFramer)
         client.connect()
         client.close()
         return True
@@ -185,7 +186,8 @@ class ChargingStation:
         """Updating sensor states."""
         _LOGGER.debug(f"{DOMAIN_FRIENDLY} : Fetching latest sensor states for charging station")
 
-        client = ModbusClient(self._host, self._port, framer=ModbusRtuFramer)
+        client = ModbusClient(self._host, self._port)
+#         client = ModbusClient(self._host, self._port, framer=ModbusRtuFramer)
         client.connect()
 
         result = None
